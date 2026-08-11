@@ -16,10 +16,8 @@ from datetime import datetime
 RAW_DATA_DIR = os.path.join("data", "raw")
 OUTPUT_SCHEMA_PATH = os.path.join("sql", "schema.sql")
 
-# Acima disso, um número inteiro não cabe nem em BIGINT (limite ~19 dígitos).
-# Colunas assim são identificadores longos (ex: chave de acesso de NF-e),
-# não quantidades, então tratamos como TEXT.
-MAX_INTEGER_DIGITS = 18
+INTEGER_MAX = 2_147_483_647
+BIGINT_MAX = 9_223_372_036_854_775_807
 
 
 def list_csv_files(directory: str) -> list[str]:
@@ -31,13 +29,22 @@ def list_csv_files(directory: str) -> list[str]:
     )
 
 
-def _is_int(value: str) -> bool:
-    stripped = value.strip().lstrip("-")
-    if not stripped.isdigit():
-        return False
-    if len(stripped) > MAX_INTEGER_DIGITS:
-        return False
-    return True
+def _is_plain_integer_string(value: str) -> bool:
+    """True se o valor é uma sequência de dígitos (com sinal opcional),
+    sem separadores nem ponto decimal."""
+    v = value.strip()
+    if v and v[0] in "+-":
+        v = v[1:]
+    return v.isdigit()
+
+
+def _has_leading_zero(value: str) -> bool:
+    """True se o valor tem zero à esquerda (ex: '0812356442423', '06100715800').
+    Nesse caso o campo é um identificador/código, não uma quantidade numérica,
+    e convertê-lo para INTEGER/BIGINT perderia esse zero, corrompendo o dado.
+    """
+    v = value.strip().lstrip("+-")
+    return len(v) > 1 and v[0] == "0"
 
 
 def _is_float(value: str) -> bool:
@@ -69,12 +76,13 @@ def _is_timestamp(value: str) -> bool:
 
 
 def infer_column_type(sample_values: list[str]) -> str:
-    """Infere o tipo PostgreSQL a partir de uma amostra de valores de uma coluna.
+    """Infere o tipo PostgreSQL a partir dos valores de uma coluna.
 
     Estratégia: percorre os candidatos do mais específico para o mais genérico
-    (BOOLEAN -> TIMESTAMP -> DATE -> INTEGER -> NUMERIC -> TEXT). Valores vazios
-    são ignorados na inferência (tratados como NULL). Se não sobrar nenhum valor
-    não-vazio, assume TEXT.
+    (BOOLEAN -> TIMESTAMP -> DATE -> INTEGER/BIGINT -> NUMERIC -> TEXT).
+    Valores vazios são ignorados (tratados como NULL). Números com zero à
+    esquerda são tratados como TEXT (identificadores como telefone/EAN, não
+    quantidades) para não perder informação na conversão.
     """
     non_empty = [v for v in sample_values if v is not None and v.strip() != ""]
 
@@ -90,14 +98,16 @@ def infer_column_type(sample_values: list[str]) -> str:
     if all(_is_date(v) for v in non_empty):
         return "DATE"
 
-    if all(_is_int(v) for v in non_empty):
-        return "INTEGER"
+    if all(_is_plain_integer_string(v) for v in non_empty):
+        if any(_has_leading_zero(v) for v in non_empty):
+            return "TEXT"
 
-    # Sequência de dígitos longa demais para INTEGER/BIGINT (ex: chave de
-    # acesso de NF-e): é um identificador, não uma quantidade -> TEXT,
-    # mesmo que tecnicamente "parseável" como NUMERIC.
-    if all(v.strip().lstrip("-").isdigit() for v in non_empty):
-        return "TEXT"
+        max_abs = max(abs(int(v)) for v in non_empty)
+        if max_abs <= INTEGER_MAX:
+            return "INTEGER"
+        if max_abs <= BIGINT_MAX:
+            return "BIGINT"
+        return "TEXT"  # grande demais até para BIGINT (ex: chave de NF-e)
 
     if all(_is_float(v) for v in non_empty):
         return "NUMERIC"
