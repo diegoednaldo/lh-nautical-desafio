@@ -1,0 +1,24 @@
+# Ambiente
+.venv/
+venv/
+.env
+
+# Dados brutos (pesados, não versionar)
+data/raw/
+data/processed/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# SO
+.DS_Store
+Thumbs.db
+
+# Docker
+pgdata/

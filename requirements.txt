@@ -1,0 +1,23 @@
+# Notebooks
+jupyter
+ipykernel
+
+# Análise de dados
+pandas
+numpy
+
+# Banco de dados
+psycopg2-binary
+sqlalchemy
+python-dotenv
+
+# Visualização
+matplotlib
+seaborn
+plotly
+
+# Ciência de dados / ML (Q6 e Q7)
+scikit-learn
+
+# Nota: a Questão 2 exige apenas bibliotecas padrão do Python
+# (csv, os, datetime etc.) — não usar pandas/dask/polars nesse script.

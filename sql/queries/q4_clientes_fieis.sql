@@ -1,0 +1,4 @@
+-- Questão 4.1 - Análise de clientes fiéis
+-- Ticket Médio, Diversidade de Categorias, filtro de elite (>= 13 categorias)
+-- Top 10 clientes por Ticket Médio, desempate por customer_id crescente
+-- TODO

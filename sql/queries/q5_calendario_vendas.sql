@@ -1,0 +1,4 @@
+-- Questão 5.1 - Dimensão de calendário + vendas por dia da semana
+-- Construção do calendário (dias em português), LEFT JOIN com vendas (lojas físicas = pos),
+-- substituição de nulos por zero para dias sem venda
+-- TODO

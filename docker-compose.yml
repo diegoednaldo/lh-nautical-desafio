@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: lh_nautical_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-lh_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lh_password}
+      POSTGRES_DB: ${DB_NAME:-lh_nautical}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - lh_nautical_pgdata:/var/lib/postgresql/data
+
+volumes:
+  lh_nautical_pgdata:

@@ -1,0 +1,2 @@
+-- Gerado automaticamente por src/generate_schema.py (Questão 2)
+-- Não editar manualmente: rode o script novamente para regenerar este arquivo.
