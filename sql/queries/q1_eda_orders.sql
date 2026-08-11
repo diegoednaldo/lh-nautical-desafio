@@ -1,8 +1,11 @@
--- Questão 1.1 - EDA da tabela orders
--- Sem tratamento de dados: apenas observação e agregação.
+-- Questão 1.1 - EDA da tabela orders (SQL)
+-- Sem tratamento: apenas observação e agregação
 
--- Visão geral: total de linhas, total de colunas, intervalo de datas
--- TODO
-
--- Análise de valores numéricos da coluna "total": min, max, média
--- TODO
+SELECT
+    COUNT(*)                       AS total_linhas,
+    MIN(created_at)                AS data_minima,
+    MAX(created_at)                AS data_maxima,
+    MIN(total)                     AS valor_minimo,
+    MAX(total)                     AS valor_maximo,
+    ROUND(AVG(total), 2)           AS valor_medio
+FROM orders;
