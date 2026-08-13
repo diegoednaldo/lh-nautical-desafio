@@ -1,27 +1,40 @@
-"""
-Questão 6 - Previsão de Demanda: Bússola de Bordo 702
+"""Questão 6 - Previsão de demanda da Bússola de Bordo 702.
 
-Constrói um baseline de previsão mensal de vendas usando média móvel dos
-últimos 3 meses (rolling one-step-ahead), treina com dados até 31/12/2025
-e avalia contra o 1º trimestre de 2026 usando MAE.
+Regras analíticas adotadas:
 
-Nota de qualidade de dado: existem dois cadastros de produto com o nome
-exatamente igual "Bússola de Bordo 702" (IDs 74 e 240). Como ambos têm
-histórico de vendas real e não há como desambiguá-los com segurança
-(a data de criação do cadastro não é confiável), as vendas de ambos são
-somadas e tratadas como um único produto.
+- todos os pedidos são considerados, sem filtro de status, conforme o
+  enunciado;
+- todos os IDs cujo nome seja exatamente ``Bússola de Bordo 702`` são
+  agregados porque o enunciado define o alvo pelo nome. O conjunto atual
+  possui os IDs 74 e 240; eles têm nome e descrição iguais, mas marca e
+  categoria diferentes. Portanto, essa agregação é uma hipótese operacional,
+  não uma afirmação de que os cadastros representam comprovadamente o mesmo
+  item físico;
+- o histórico até dezembro de 2025 forma o treino inicial;
+- janeiro a março de 2026 é avaliado em walk-forward mensal: a previsão de
+  cada mês usa somente as três observações mensais anteriores. Depois de
+  avaliar um mês, seu valor real passa a integrar o histórico do mês seguinte.
 """
 import pandas as pd
 
 from src.db import get_engine
 
 
+PRODUCT_NAME = "Bússola de Bordo 702"
+TRAIN_END = pd.Period("2025-12", freq="M")
+TEST_PERIOD = pd.period_range("2026-01", "2026-03", freq="M")
+TEST_END_EXCLUSIVE = "2026-04-01"
+MOVING_AVERAGE_WINDOW = 3
+
+
 def build_monthly_sales_series(engine) -> pd.Series:
-    """Constrói a série mensal de vendas (soma de quantity) do produto
-    'Bússola de Bordo 702', unificando os dois cadastros duplicados."""
+    """Constrói a série mensal, unificando todos os IDs com nome exato."""
     products = pd.read_sql(
-        "SELECT id FROM products WHERE name = 'Bússola de Bordo 702'", engine
+        f"SELECT id FROM products WHERE name = '{PRODUCT_NAME}'", engine
     )
+    if products.empty:
+        raise ValueError(f"Produto com nome exato '{PRODUCT_NAME}' não encontrado.")
+
     product_ids = products["id"].tolist()
 
     variants = pd.read_sql(
@@ -29,13 +42,18 @@ def build_monthly_sales_series(engine) -> pd.Series:
         f"({','.join(map(str, product_ids))})",
         engine,
     )
+    if variants.empty:
+        raise ValueError(f"Nenhuma variante encontrada para '{PRODUCT_NAME}'.")
+
     variant_ids = variants["id"].tolist()
 
     query = f"""
         SELECT oi.quantity, o.created_at
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
+        -- Regra do enunciado: não filtrar o status dos pedidos.
         WHERE oi.product_variant_id IN ({','.join(map(str, variant_ids))})
+          AND o.created_at < '{TEST_END_EXCLUSIVE}'
     """
     vendas = pd.read_sql(query, engine)
     vendas["created_at"] = pd.to_datetime(vendas["created_at"])
@@ -43,27 +61,32 @@ def build_monthly_sales_series(engine) -> pd.Series:
 
     vendas_mensais = vendas.groupby("mes")["quantity"].sum().sort_index()
 
-    # Preenche meses sem venda com 0, garantindo série contínua
+    # Série contínua somente até o fim do período necessário para a avaliação.
     idx_completo = pd.period_range(
-        vendas_mensais.index.min(), vendas_mensais.index.max(), freq="M"
+        vendas_mensais.index.min(), TEST_PERIOD[-1], freq="M"
     )
     return vendas_mensais.reindex(idx_completo, fill_value=0)
 
 
-def moving_average_baseline(vendas_mensais: pd.Series, window: int = 3) -> pd.Series:
-    """Previsão de cada mês = média móvel dos `window` meses anteriores
-    (rolling one-step-ahead). O shift(1) garante que o mês M nunca usa a
-    própria venda de M, só dados estritamente anteriores a M."""
-    return vendas_mensais.rolling(window=window).mean().shift(1)
+def walk_forward_forecast(
+    vendas_mensais: pd.Series,
+    train_end: pd.Period,
+    test_period: pd.PeriodIndex,
+    window: int = 3,
+) -> pd.DataFrame:
+    """Avalia a média móvel mensal em walk-forward, sem vazamento temporal."""
+    history = vendas_mensais.loc[:train_end].copy()
 
+    rows = []
+    for month in test_period:
+        prediction = history.iloc[-window:].mean()
+        actual = vendas_mensais.loc[month]
+        rows.append({"mes": month, "real": actual, "previsto": prediction})
 
-def evaluate_forecast(vendas_mensais: pd.Series, forecast: pd.Series,
-                       periodo_teste: pd.PeriodIndex) -> pd.DataFrame:
-    """Monta a tabela de comparação real vs. previsto e calcula o erro absoluto."""
-    resultado = pd.DataFrame({
-        "real": vendas_mensais.reindex(periodo_teste),
-        "previsto": forecast.reindex(periodo_teste),
-    })
+        # Atualiza o histórico somente depois de prever e avaliar o mês atual.
+        history.loc[month] = actual
+
+    resultado = pd.DataFrame(rows).set_index("mes")
     resultado["previsto_arredondado"] = resultado["previsto"].round().astype(int)
     resultado["erro_absoluto"] = (resultado["real"] - resultado["previsto"]).abs()
     return resultado
@@ -73,18 +96,28 @@ def main():
     engine = get_engine()
 
     vendas_mensais = build_monthly_sales_series(engine)
-    forecast = moving_average_baseline(vendas_mensais, window=3)
-
-    periodo_teste = pd.period_range("2026-01", "2026-03", freq="M")
-    resultado = evaluate_forecast(vendas_mensais, forecast, periodo_teste)
+    resultado = walk_forward_forecast(
+        vendas_mensais,
+        train_end=TRAIN_END,
+        test_period=TEST_PERIOD,
+        window=MOVING_AVERAGE_WINDOW,
+    )
 
     mae = resultado["erro_absoluto"].mean()
     soma_previsao = resultado["previsto_arredondado"].sum()
 
-    print(resultado)
-    print(f"\nMAE: {mae:.2f}")
-    print(f"Soma real Q1 2026: {resultado['real'].sum()}")
-    print(f"Soma da previsão (arredondada) Q1 2026: {soma_previsao}")
+    print(f"Produto (nome exato): {PRODUCT_NAME}")
+    print("Status considerados: todos (sem filtro)")
+    print(f"Treino inicial: histórico até {TRAIN_END}")
+    print(f"Teste walk-forward: {TEST_PERIOD[0]} a {TEST_PERIOD[-1]}")
+    print("\nResultado mensal:")
+    print(resultado.to_string())
+    print(f"\nMAE (previsão não arredondada): {mae:.2f}")
+    print(f"Total real no 1º trimestre de 2026: {resultado['real'].sum():.0f}")
+    print(
+        "Total previsto no 1º trimestre de 2026 "
+        f"(previsões mensais arredondadas): {soma_previsao}"
+    )
 
 
 if __name__ == "__main__":
