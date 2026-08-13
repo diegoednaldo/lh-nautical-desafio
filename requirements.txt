@@ -20,4 +20,4 @@ plotly
 scikit-learn
 
 # Nota: a Questão 2 exige apenas bibliotecas padrão do Python
-# (csv, os, datetime etc.) — não usar pandas/dask/polars nesse script.
+# (csv, os, datetime etc.); não usar pandas/dask/polars nesse script.

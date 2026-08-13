@@ -1,4 +1,4 @@
-# Desafio de Dados — LH Nautical
+# Desafio de Dados: LH Nautical
 
 Projeto desenvolvido para o desafio técnico da LH Nautical, cobrindo o pipeline completo:
 EDA → modelagem de schema → carregamento em Postgres → análises de negócio → previsão de
@@ -69,11 +69,11 @@ O material complementar (painel/dashboard) fica em `dashboard/`.
 
 ## Status das entregas
 
-- [ ] Q1 — EDA
-- [ ] Q2 — Schema
-- [ ] Q3 — Carregamento
-- [ ] Q4 — Análise de clientes
-- [ ] Q5 — Dimensão de calendário
-- [ ] Q6 — Previsão de demanda
-- [ ] Q7 — Sistema de recomendação
+- [ ] Q1: EDA
+- [ ] Q2: Schema
+- [ ] Q3: Carregamento
+- [ ] Q4: Análise de clientes
+- [ ] Q5: Dimensão de calendário
+- [ ] Q6: Previsão de demanda
+- [ ] Q7: Sistema de recomendação
 - [ ] Dashboard final
