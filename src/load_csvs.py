@@ -1,7 +1,7 @@
 """
 Questão 3 - Carregamento dos CSVs no Postgres
 
-Carrega todos os CSVs de data/raw/lh_nautical_csv/ nas tabelas criadas
+Carrega todos os CSVs de data/raw/ nas tabelas criadas
 pelo schema.sql (Questão 2), sem nenhum tratamento de dados (sem remoção
 de nulos, sem correção de caracteres especiais).
 
@@ -12,7 +12,10 @@ sem precisar de nenhuma lógica de limpeza manual.
 import csv
 import os
 
-from src.db import get_psycopg2_connection
+if __package__:
+    from .db import get_psycopg2_connection
+else:
+    from db import get_psycopg2_connection
 
 RAW_DATA_DIR = os.path.join("data", "raw")
 
@@ -28,6 +31,20 @@ def get_csv_header(csv_path: str) -> list[str]:
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.reader(f)
         return next(reader)
+
+
+def find_nonempty_tables(conn, csv_files: list[str]) -> list[str]:
+    """Retorna as tabelas de destino que já possuem ao menos uma linha."""
+    nonempty_tables = []
+
+    with conn.cursor() as cur:
+        for csv_file in csv_files:
+            table_name = os.path.splitext(csv_file)[0]
+            cur.execute(f'SELECT EXISTS (SELECT 1 FROM "{table_name}" LIMIT 1)')
+            if cur.fetchone()[0]:
+                nonempty_tables.append(table_name)
+
+    return nonempty_tables
 
 
 def load_csv_to_table(conn, csv_path: str, table_name: str) -> int:
@@ -52,21 +69,23 @@ def load_csv_to_table(conn, csv_path: str, table_name: str) -> int:
 
 def main():
     conn = get_psycopg2_connection()
-    csv_files = list_csv_files(RAW_DATA_DIR)
+    try:
+        csv_files = list_csv_files(RAW_DATA_DIR)
+        print(f"Encontrados {len(csv_files)} arquivos CSV para carregar.\n")
 
-    print(f"Encontrados {len(csv_files)} arquivos CSV para carregar.\n")
+        nonempty_tables = find_nonempty_tables(conn, csv_files)
+        if nonempty_tables:
+            print("Carga não executada: o banco já possui dados nas tabelas:")
+            print(", ".join(nonempty_tables))
+            return
 
-    for csv_file in csv_files:
-        table_name = os.path.splitext(csv_file)[0]
-        csv_path = os.path.join(RAW_DATA_DIR, csv_file)
-        try:
+        for csv_file in csv_files:
+            table_name = os.path.splitext(csv_file)[0]
+            csv_path = os.path.join(RAW_DATA_DIR, csv_file)
             rows_loaded = load_csv_to_table(conn, csv_path, table_name)
             print(f"{table_name}: {rows_loaded} linhas carregadas")
-        except Exception as e:
-            conn.rollback()
-            print(f"ERRO ao carregar {table_name}: {e}")
-
-    conn.close()
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
