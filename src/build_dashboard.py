@@ -166,7 +166,9 @@ def load_sources() -> dict[str, pd.DataFrame]:
             "goods_receipts", ["id", "purchase_order_id", "received_at"],
             parse_dates=["received_at"],
         ),
-        "suppliers": read_csv("suppliers", ["id", "trade_name"]),
+        "suppliers": read_csv(
+            "suppliers", ["id", "legal_name", "trade_name"]
+        ),
     }
 
     require_columns(
@@ -558,6 +560,15 @@ def calculate_suppliers(
         late = values[values > 0]
         return float(late.mean()) if not late.empty else 0.0
 
+    supplier_names = sources["suppliers"].rename(
+        columns={"id": "supplier_id"}
+    ).copy()
+    trade_names = supplier_names["trade_name"].astype("string").str.strip()
+    legal_names = supplier_names["legal_name"].astype("string").str.strip()
+    supplier_names["fornecedor"] = trade_names.mask(
+        trade_names.isna() | trade_names.eq(""), legal_names
+    )
+
     supplier_summary = (
         completed.groupby("supplier_id", as_index=False)
         .agg(
@@ -566,9 +577,7 @@ def calculate_suppliers(
             atraso_medio_dias=("delay_days", mean_late_days),
         )
         .merge(
-            sources["suppliers"].rename(
-                columns={"id": "supplier_id", "trade_name": "fornecedor"}
-            ),
+            supplier_names[["supplier_id", "fornecedor"]],
             on="supplier_id",
             how="left",
         )

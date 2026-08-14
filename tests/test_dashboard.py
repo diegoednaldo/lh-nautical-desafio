@@ -88,6 +88,19 @@ class DashboardBuildTests(unittest.TestCase):
             self.data["suppliers"]["ranking"]["supplier_id"].head(5).tolist(),
             [22, 4, 10, 15, 19],
         )
+        supplier_ranking = self.data["suppliers"]["ranking"]
+        supplier_labels = supplier_ranking["rotulo"].astype("string")
+        self.assertFalse(
+            supplier_labels.str.contains(r"\bnan\b", case=False, na=True).any()
+        )
+        supplier_names = supplier_ranking.set_index("supplier_id")[
+            "fornecedor"
+        ].to_dict()
+        self.assertEqual(supplier_names[22], "Jesus e Filhos Ltda")
+        self.assertEqual(supplier_names[4], "Moura Duarte - EI ME")
+        self.assertEqual(supplier_names[19], "das Neves S.A.")
+        self.assertEqual(supplier_names[3], "da Rocha EIRELI")
+        self.assertEqual(supplier_names[14], "Nunes S.A.")
         self.assertEqual(
             round(self.data["suppliers"]["average_late_days"], 2), 10.24
         )
