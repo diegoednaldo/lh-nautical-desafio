@@ -17,7 +17,10 @@ Regras analíticas adotadas:
 """
 import pandas as pd
 
-from src.db import get_engine
+if __package__:
+    from .db import get_engine
+else:
+    from db import get_engine
 
 
 PRODUCT_NAME = "Bússola de Bordo 702"
