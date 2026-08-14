@@ -9,6 +9,7 @@ demanda → sistema de recomendação.
 - **Python 3** (VSCode como ambiente principal)
 - **PostgreSQL** rodando via Docker Compose
 - **Jupyter Notebooks** para as entregas exploratórias/analíticas
+- **Plotly e GitHub Pages** para o dashboard estático
 - Bibliotecas: ver `requirements.txt`
 
 ## Estrutura do projeto
@@ -16,14 +17,15 @@ demanda → sistema de recomendação.
 ```
 lh-nautical-desafio/
 ├── data/
-│   ├── raw/                # CSVs originais, sem nenhum tratamento (não editar)
-│   └── processed/          # saídas intermediárias geradas pelas análises
+│   └── raw/                # CSVs originais, sem nenhum tratamento (não editar)
 ├── sql/
 │   ├── schema.sql          # gerado pela Questão 2 (src/generate_schema.py)
 │   └── queries/            # queries .sql isoladas por questão
 ├── src/                    # código python reutilizável (scripts "de produção")
 ├── notebooks/              # notebooks de análise, um por frente/questão
 ├── dashboard/              # entregável final (painel/dashboard)
+├── tests/                  # validações automatizadas do dashboard
+├── .github/workflows/      # publicação no GitHub Pages
 └── docs/                   # documentação original do desafio
 ```
 
@@ -65,15 +67,27 @@ Isso sobe um Postgres em `localhost:5432` com os dados definidos no `.env`.
 
 ### 5. Dashboard final
 
-O material complementar (painel/dashboard) fica em `dashboard/`.
+Gere o painel com os dados locais:
+
+```bash
+python src/build_dashboard.py
+```
+
+O arquivo final fica em `dashboard/index.html` e pode ser aberto diretamente no navegador. A pasta contém somente o HTML e os recursos estáticos necessários para publicação no GitHub Pages. Instruções e regras de cálculo estão em `dashboard/README.md`.
+
+Para validar as métricas e a geração determinística:
+
+```bash
+python -m unittest tests.test_dashboard -v
+```
 
 ## Status das entregas
 
-- [ ] Q1: EDA
-- [ ] Q2: Schema
-- [ ] Q3: Carregamento
-- [ ] Q4: Análise de clientes
-- [ ] Q5: Dimensão de calendário
-- [ ] Q6: Previsão de demanda
-- [ ] Q7: Sistema de recomendação
-- [ ] Dashboard final
+- [x] Q1: EDA
+- [x] Q2: Schema
+- [x] Q3: Carregamento
+- [x] Q4: Análise de clientes
+- [x] Q5: Dimensão de calendário
+- [x] Q6: Previsão de demanda
+- [x] Q7: Sistema de recomendação
+- [x] Dashboard final
