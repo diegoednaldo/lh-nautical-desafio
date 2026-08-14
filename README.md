@@ -13,7 +13,7 @@
   &nbsp;|&nbsp;
   <a href="notebooks/">Ver notebooks</a>
   &nbsp;|&nbsp;
-  <a href="docs/documentacao_desafio.pdf">Ler o enunciado</a>
+  <a href="docs/documentacao_desafio.pdf">Documentação</a>
 </p>
 
 ---
