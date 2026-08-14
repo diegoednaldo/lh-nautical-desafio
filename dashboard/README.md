@@ -1,5 +1,7 @@
 # Dashboard executivo
 
+**Acesse o dashboard:** [LH Nautical | Dashboard Executivo](https://diegoednaldo.github.io/lh-nautical-desafio/)
+
 Painel estático construído com Python e Plotly para comunicar os resultados do desafio e explorações adicionais relevantes para a operação da LH Nautical.
 
 ## Conteúdo
